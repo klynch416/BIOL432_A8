@@ -1,0 +1,70 @@
+<https://github.com/klynch416/BIOL432_A8>
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(ape)
+library(ggtree)
+library(vegan)
+```
+*Loading data set*
+```{r}
+data <- read.csv("./FloristicSurvey.csv")
+```
+
+
+*Influence of garlic mustard on total plant species number*
+```{r fig.cap="Figure 1. Distribution of the total number of species present with varying Garlic Mustard densities inside their patches. Species were counted across five different populations of Garlic Mustard plants. There is a positive relationship between the number of Garlic Mustard plants present and the total number of species found. There also seems to be an influence of the different Garlic Mustard populations."}
+
+totaldata <- data %>% filter(Location == "i") %>% mutate(Total_species = rowSums(across(Claytonia_virginiana:maianthenum_racemosum)), Total_GM = rowSums(across(Rosettes:Sillique))) %>% select(!Rosettes:maianthenum_racemosum)
+
+ggplot(data = totaldata, aes(x = Total_GM, y = Total_species)) +
+  geom_point(aes(colour = as.factor(Population))) +
+  geom_smooth(method = "lm", se = F) +
+  scale_colour_discrete(name = "Population") +
+  scale_x_continuous(name = "Total Garlic Mustard Plants") +
+  scale_y_continuous(name = "Total Species Present") +
+  theme_classic()
+
+```
+What effect (if any) does garlic mustard have on the plant community?
+
+When looking at the change in total number of plant species inside the garlic mustard patches, we find a positive relationship. That is, when garlic mustard plant numbers increase so do total species numbers. We also find that different populations of garlic mustard have a different influence on the number of total species present. Population 7 had the most garlic mustard plants and other species, while population 3 had the least garlic mustard plants and total species count. 
+
+*Distance matrix*
+```{r}
+
+quaddata <- data %>% select(!c(Quadrate:Sillique)) 
+row.names(quaddata) <- data$Quadrate
+
+Factors <- data %>% select(Quadrate:Location)
+
+quaddist <- vegdist(quaddata, method = "bray", binary = F) 
+quadtree <- nj(quaddist)
+
+ggtree(quadtree, layout = "rectangular") %<+% Factors +
+  geom_tiplab(aes(colour = Location))
+
+```
+
+*NMDS*
+```{r fig.cap = "Figure 2. Relationship between the number of different plant species and the quadrate of Garlic mustard. The points were separated by location (i: inside patch, o:outside patch) and population (1,3,13,14). There appears to be no relationship between the number of species between the two locations. However, there may be a relationship between the populations."}
+
+NMDSdat <- metaMDS(quaddist, k = 2, trymax = 100)
+
+PDat <- data.frame(NMDS1 = NMDSdat$points[,1],
+                   NMDS2 = NMDSdat$points[,2],
+                   Quadrate = row.names(quaddata))
+
+PDat <- merge(PDat, Factors, by = "Quadrate", all.x = T, all.y = F)
+
+ggplot(data = PDat) +
+  geom_point(aes(x = NMDS1, y = NMDS2, colour = Location, shape = as.factor(Population))) +
+  scale_color_discrete(name = "Location") +
+  scale_shape_discrete(name = "Population") +
+  theme_classic()
+
+```
+What has a stronger effect on plant communities: the presence/absence of garlic mustard (in/out) or sampling population?
+
+The presence or absence of garlic mustard does not create any visible clusters, leading to the conclusion that location of the garlic mustard plants may not have an influence on plant communities. The different populations created more obvious clusters suggesting that population has a stronger influence on plant communities. There may also be an interactive influence of location and population as location-population pairs created more obvious clusters.
